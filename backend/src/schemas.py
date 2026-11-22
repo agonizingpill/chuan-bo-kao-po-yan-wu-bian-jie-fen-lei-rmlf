@@ -70,6 +70,10 @@ class DispatchInput(Payload):
     instruction: Note
 
 
+class WithdrawInput(Payload):
+    reason: Note
+
+
 class CloseInput(Payload):
     all_fast_at: NaiveDatetime
     outcome: Note

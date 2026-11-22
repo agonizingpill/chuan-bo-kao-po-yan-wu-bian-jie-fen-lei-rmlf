@@ -6,7 +6,9 @@ from sqlalchemy import select
 from . import incidents, planning
 from .database import Session
 from .models import Audit, Berth, BerthRequest, DelayIncident, DispatchReview, Role, TideWindow, Tug, TugAssignment, User
-from .schemas import AssignTug, CloseInput, DispatchInput, IncidentInput, Login, MarginDecision, RequestInput, Schedule, TideInput
+from .schemas import (
+    AssignTug, CloseInput, DispatchInput, IncidentInput, Login, MarginDecision, RequestInput, Schedule, TideInput, WithdrawInput,
+)
 from .security import current_user, permitted, token_for, valid_password
 
 router = APIRouter()
@@ -94,19 +96,34 @@ def confirm_request(code: str, user: User = supervise):
 @router.post('/delay-incidents', status_code=202)
 def create_incident(data: IncidentInput, user: User = write):
     with Session.begin() as db:
-        incident = incidents.report(db, user.username, data)
+        incident, enqueue = incidents.report(db, user.username, data)
         db.flush()
         output = row(incident)
-    incidents.notify(incident.code)
+    if enqueue:
+        incidents.notify(incident.code)
     return output
 
 
 @router.post('/delay-incidents/{code}/retry', status_code=202)
 def retry_incident(code: str, user: User = supervise):
     with Session.begin() as db:
-        output = row(incidents.retry(db, user.username, code))
-    incidents.notify(code)
+        incident, enqueue = incidents.retry(db, user.username, code)
+        output = row(incident)
+    if enqueue:
+        incidents.notify(code)
     return output
+
+
+@router.post('/delay-incidents/{code}/withdraw')
+def withdraw_incident(code: str, data: WithdrawInput, user: User = write):
+    with Session.begin() as db:
+        return row(incidents.withdraw(db, user.username, code, data)[0])
+
+
+@router.post('/delay-incidents/{code}/withdraw/review')
+def review_withdrawal(code: str, data: WithdrawInput, user: User = supervise):
+    with Session.begin() as db:
+        return row(incidents.confirm_withdraw(db, user.username, code, data)[0])
 
 
 @router.post('/delay-incidents/{code}/margin-review')

@@ -35,6 +35,8 @@ export const eventNames = {
   INSUFFICIENT_TIDE: '潮窗核验不通过', TUG_CONFLICT: '拖轮冲突', BERTH_CONFLICT: '泊位作业冲突', TUG_REQUIRED: '缺拖轮预约',
   INCIDENT_QUEUED: '登记现场延误', INCIDENT_REQUEUED: '重试模型', MODEL_FAILED: '模型计算失败', MODEL_CLASSIFIED: '模型分类',
   MARGIN_REVIEWED: '主管签署分类', MARGIN_REVIEW_REQUIRED: '间隔带未复核', ACTION_ISSUED: '发布调度指令', REVIEW_CLOSED: '完成复盘',
+  INCIDENT_WITHDRAWN: '撤销误报案件', WITHDRAW_REVIEW_REQUESTED: '提请主管核查撤销', WITHDRAW_REVIEW_UPDATED: '更新撤销理由',
+  WITHDRAW_REVIEWED: '主管核查并撤销', WITHDRAW_STATE: '撤销状态不符', WITHDRAW_CLOSED: '结案不可撤销',
   PRIORITY_ACTION_REQUIRED: '处置级别不符', ALL_FAST_TIME: '复盘时间不符',
 };
 

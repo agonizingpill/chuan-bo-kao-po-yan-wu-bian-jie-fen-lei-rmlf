@@ -18,9 +18,15 @@ heartbeat = Path('/tmp/berth-heartbeat')
 def process_next():
     with Session.begin() as db:
         incident = db.scalar(select(DelayIncident).where(DelayIncident.state == IncidentState.QUEUED)
-                             .order_by(DelayIncident.code).limit(1).with_for_update(skip_locked=True))
+                             .order_by(DelayIncident.code).limit(1).with_for_update(skip_locked=True)
+                             .execution_options(populate_existing=True))
         if not incident:
             return False
+        # The row is locked before classification. A withdrawal that already committed makes the
+        # row invisible to this scan or flips it after the lock is acquired; either way the first
+        # landed state wins and the pending model result is discarded.
+        if incident.state != IncidentState.QUEUED:
+            return True
         incident.attempts += 1
         try:
             result = classify(incident.features, incident.input_digest)
@@ -31,8 +37,10 @@ def process_next():
             audit(db, 'worker', incident.code, 'MODEL_FAILED', incident.error)
             return True
         incident.result = result
-        incident.state = IncidentState.MARGIN_REVIEW if result['needs_review'] else IncidentState.READY
-        if incident.state == IncidentState.READY:
+        if result['needs_review']:
+            incident.state = IncidentState.MARGIN_REVIEW
+        else:
+            incident.state = IncidentState.READY
             incident.decision = DelayClass(result['prediction'])
         audit(db, 'worker', incident.code, 'MODEL_CLASSIFIED', f"f(x)={result['score']:+.5f} · {incident.state}")
         log.info('%s %s', incident.code, incident.state)

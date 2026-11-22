@@ -14,8 +14,8 @@
 
 | 账号 | 角色 | 页面和操作 |
 |---|---|---|
-| `operator` | 值班调度员 | 登记靠泊申请，修订未确认计划，预约拖轮，登记已确认申请的 VHF 延误 |
-| `supervisor` | 调度主管 | 具备调度员操作，可发布潮窗、确认靠泊、重试、签署分类、发布指令及复盘结案 |
+| `operator` | 值班调度员 | 登记靠泊申请，修订未确认计划，预约拖轮，登记已确认申请的 VHF 延误，登记误报撤销 |
+| `supervisor` | 调度主管 | 具备调度员操作，可发布潮窗、确认靠泊、重试、签署分类、发布指令、复盘结案及核查撤销 |
 | `viewer` | 观察员 | 查询潮窗、申请、预约、案件、指令和审计记录 |
 
 三个本地演示账号的口令均为 `Harbor1074!`。
@@ -61,11 +61,12 @@ docker compose exec -T backend python -m scripts.seed_demo
 - 四项模型输入为引航偏离、潮窗结束余量、实测风速、拖轮等候。创建案件时冻结输入并生成 SHA-256。固定种子 `1074` 生成 720 条训练样本与独立生成的 240 条验证样本。`StandardScaler` 将训练特征中心化、缩放，再以 `SVC(kernel='rbf', C=1.7, gamma='scale')` 拟合。二分类用 `decision_function` 的符号提供建议，`|f(x)| ≤ 0.30` 进入人工复核。平衡准确率为两类召回率的均值。模型结果保留支持向量数、合成验证指标、参数和版本。
 - worker 使用 MySQL 待处理状态和行锁领取案件，Redis 唤醒丢失时继续扫描。计算失败写入错误，主管可以沿用冻结摘要重试。成功后原模型建议持续保留，模型签署与人工签署有不同的记录字段。
 - 已确认的计划冻结。调度指令支持跟踪、待命、通知改期。改期指令是发给引航席的交班记录，现场后续排程由引航席另行协调。模型指标源于合成数据，现场岗位发布的动作和实绩通过表单登记。
+- 误报案件由调度员登记撤销理由转为撤销案件，原始冻结观测、模型快照和交班记录保留可追溯。撤销与后台分类并发时以先提交的状态为准：撤销先落库则不再分类并丢弃模型结果，分类先落库则保留模型结果。已发布指令的案件撤销时保留原指令并转入待主管核查，结案案件不可撤销。重复登记与重试复用既有记录，不重复入队、不重复分类，也不改动关联靠泊申请状态。
 
 ## 代码位置
 
 - `backend/src/models.py` 定义实体与数据库约束，`schemas.py` 定义操作数据。`main.py` 首次启动建表，`backend/migrations/README.md` 记录建库入口。
-- `planning.py` 处理资源预约、撤销与确认，`incidents.py` 处理案件、签署、调度与复盘。`routes.py` 接入 JWT 权限和事务。`main.py` 提供请求跟踪、响应策略及全局业务错误处理。
+- `planning.py` 处理资源预约、撤销与确认，`incidents.py` 处理案件、撤销、签署、调度与复盘。`routes.py` 接入 JWT 权限和事务。`main.py` 提供请求跟踪、响应策略及全局业务错误处理。
 - `classifier.py` 和 `worker.py` 完成异步分类。`backend/scripts/seed_demo.py` 建立可演示班次。
 - `frontend/src/api.js` 对接接口，`store.js` 保存值班会话和班次数据，`planning.js` 和 `incidents.js` 提供业务页面，`ui.js` 复用状态标签、编辑表单、交班时间线和格式化函数。
 - 角色、申请状态、案件状态、分类和动作枚举在 `backend/src/models.py` 与 `frontend/src/store.js` 定义。后端 `schemas.py`、`security.py`、`routes.py`、`planning.py`、`incidents.py`、`worker.py` 与 `seed_demo.py` 消费上述枚举，分类器持久化两类预测标签。前端 `app.js`、`planning.js` 与 `incidents.js` 消费相同的 API 值。

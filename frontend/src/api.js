@@ -33,4 +33,6 @@ export const api = {
   dispatch: (code, data) => request(`/delay-incidents/${encodeURIComponent(code)}/dispatch`, 'POST', data),
   close: (code, data) => request(`/delay-incidents/${encodeURIComponent(code)}/close`, 'POST', data),
   retry: code => request(`/delay-incidents/${encodeURIComponent(code)}/retry`, 'POST'),
+  withdraw: (code, data) => request(`/delay-incidents/${encodeURIComponent(code)}/withdraw`, 'POST', data),
+  reviewWithdraw: (code, data) => request(`/delay-incidents/${encodeURIComponent(code)}/withdraw/review`, 'POST', data),
 };

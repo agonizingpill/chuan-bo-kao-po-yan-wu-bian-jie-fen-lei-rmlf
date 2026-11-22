@@ -23,6 +23,8 @@ class IncidentState(StrEnum):
     MARGIN_REVIEW = 'margin_review'
     READY = 'ready'
     ACTIONED = 'actioned'
+    WITHDRAW_REVIEW = 'withdraw_review'
+    WITHDRAWN = 'withdrawn'
     CLOSED = 'closed'
 
 
@@ -123,6 +125,11 @@ class DelayIncident(Base):
     decided_by = mapped_column(ForeignKey('users.username'))
     decision_reason = mapped_column(String(300))
     decided_at = mapped_column(DateTime)
+    withdraw_reason = mapped_column(String(300))
+    withdraw_requested_by = mapped_column(ForeignKey('users.username'))
+    withdraw_requested_at = mapped_column(DateTime)
+    withdrawn_by = mapped_column(ForeignKey('users.username'))
+    withdrawn_at = mapped_column(DateTime)
 
 
 class DispatchReview(Base):
